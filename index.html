@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fahrzeug-Wartungsprotokoll</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Moderne SaaS-Schrift -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Body NICHT als Flex, nur Hintergrund + Padding */
+body {
+    font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #e5f0ff 0, #f3f4f6 45%, #e5e7eb 100%);
+    padding: 24px 16px;
+    color: #111827;
+}
+
+/* Hülle: bestimmt die tatsächliche Breite der App */
+.app-shell {
+    max-width: 800px;          /* ggf. 560px, wenn du es noch schmaler willst */
+    margin: 0 auto;
+}
+
+/* Container DARIN füllt nur die Shell, nicht mehr */
+.container {
+    width: 100%;               /* wichtig, nicht 100vw */
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid rgba(148,163,184,0.4);
+    box-shadow:
+        0 18px 45px rgba(15,23,42,0.08),
+        0 0 0 1px rgba(148,163,184,0.12);
+    overflow: hidden;
+}
+
+/* 3. Auf großen Screens zweispaltig, darunter einspaltig (hast du schon) */
+@media (min-width: 1200px) {
+    body { justify-content: center; }
+}
+        .app-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .app-logo {
+            width: 32px;
+            height: 32px;
+            border-radius: 12px;
+            background: linear-gradient(135deg,#1d4ed8,#22c55e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 16px;
+            box-shadow: 0 8px 18px rgba(37,99,235,0.45);
+        }
+        .app-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .app-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .container {
+            background: #ffffff;
+            border-radius: 18px;
+            border: 1px solid rgba(148,163,184,0.4);
+            box-shadow:
+                0 18px 45px rgba(15,23,42,0.08),
+                0 0 0 1px rgba(148,163,184,0.12);
+            overflow: hidden;
+        }
+        .header {
+            padding: 20px 28px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .header-left h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0f172a;
+            letter-spacing: 0.02em;
+        }
+        .header-left p {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+        .header-right {
+            font-size: 11px;
+            text-align: right;
+            color: #6b7280;
+        }
+
+        .progress-bar {
+            display: flex;
+            padding: 10px 20px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+            gap: 8px;
+        }
+        .progress-step {
+            flex: 1;
+            padding: 8px 10px;
+            font-size: 12px;
+            text-align: center;
+            color: #6b7280;
+            border-radius: 999px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            border: 1px solid transparent;
+        }
+        .progress-step span {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .progress-step strong {
+            font-size: 12px;
+        }
+        .progress-step.active {
+            color: #1d4ed8;
+            background: #e0ecff;
+            border-color: rgba(37,99,235,0.5);
+            box-shadow: 0 0 0 1px rgba(191,219,254,0.9);
+            font-weight: 600;
+        }
+        .progress-step.completed {
+            color: #16a34a;
+            background: #ecfdf3;
+            border-color: rgba(34,197,94,0.4);
+        }
+
+        .content {
+            padding: 22px 26px 26px;
+            background: radial-gradient(circle at top,#f9fafb 0,#ffffff 45%);
+        }
+        .block { display: none; }
+        .block.active { display: block; }
+
+        .block h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+        .block-subtitle {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 18px;
+        }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 500;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+        .form-label-extra {
+            font-size: 11px;
+            color: #9ca3af;
+            font-weight: 400;
+        }
+        .required { color: #b91c1c; margin-left: 2px; }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            font-size: 14px;
+            padding: 9px 11px;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            background: #f9fafb;
+            color: #111827;
+            transition: border-color 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+        }
+        .form-group textarea { resize: vertical; min-height: 70px; }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 1px rgba(37,99,235,0.18);
+            background: #ffffff;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg,#eff6ff,#f9fafb);
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #1d4ed8;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .info-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 999px;
+            background: #1d4ed8;
+            margin-top: 4px;
+        }
+
+        .vehicle-card {
+            display: grid;
+            grid-template-columns: 2.1fr 1.6fr;
+            gap: 18px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+            padding: 14px 16px;
+            margin-bottom: 18px;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.04);
+        }
+        .vehicle-card-left h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #0f172a;
+        }
+        .vehicle-card-left p {
+            font-size: 13px;
+            color: #4b5563;
+        }
+        .vehicle-card-right {
+            font-size: 11px;
+            border-left: 1px dashed #e5e7eb;
+            padding-left: 12px;
+        }
+        .vehicle-card-right table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        .vehicle-card-right td {
+            padding: 2px 0;
+        }
+        .vehicle-card-right td:first-child {
+            width: 46%;
+            color: #6b7280;
+        }
+        .vehicle-card-right td:last-child {
+            width: 54%;
+            text-align: left;
+            color: #111827;
+        }
+
+        .summary {
+            background: #f9fafb;
+            border-radius: 14px;
+            border: 1px solid #e5e7eb;
+            padding: 12px 14px;
+            margin-top: 18px;
+        }
+        .summary h3 {
+            margin: 0 0 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #111827;
+            margin-bottom: 3px;
+        }
+        .summary-row-divider {
+            border-bottom: 1px dashed #d1d5db;
+            margin: 8px 0;
+        }
+        .summary-row.total {
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 22px;
+        }
+        button {
+            border-radius: 999px;
+            border: 1px solid transparent;
+            font-size: 14px;
+            padding: 8px 18px;
+            cursor: pointer;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+        }
+        .btn-back {
+            background: #ffffff;
+            border-color: #d1d5db;
+            color: #111827;
+        }
+        .btn-back:hover {
+            background: #f3f4f6;
+        }
+        .btn-next {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(37,99,235,0.35);
+        }
+        .btn-next:hover {
+            background: #1e40af;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(30,64,175,0.5);
+        }
+        .btn-generate {
+            background: #059669;
+            border-color: #059669;
+            color: #ffffff;
+            box-shadow: 0 4px 10px rgba(4,120,87,0.35);
+        }
+        .btn-generate:hover {
+            background: #047857;
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(4,120,87,0.5);
+        }
+        .btn-add {
+            background: #eff6ff;
+            border-color: #bfdbfe;
+            color: #1d4ed8;
+            padding: 6px 14px;
+            font-size: 13px;
+            border-radius: 999px;
+        }
+        .btn-add:hover {
+            background: #dbeafe;
+        }
+        .btn-remove {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #b91c1c;
+            padding: 4px 10px;
+            font-size: 12px;
+            border-radius: 999px;
+        }
+        .btn-remove:hover {
+            background: #fee2e2;
+        }
+
+        .position-item {
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 18px;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.03);
+        }
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+            padding-bottom: 6px;
+        }
+        .position-header h4 {
+            font-size: 13px;
+            font-weight: 600;
+            color: #111827;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .position-totals {
+            margin-top: 14px;
+            padding-top: 10px;
+            border-top: 1px dashed #d1d5db;
+        }
+
+        @media (max-width: 768px) {
+            .content { padding: 18px 20px 20px; }  /* statt 22px 26px 26px */
+.position-item { margin-bottom: 14px; } /* statt 18px */
+            .header { padding: 16px 18px; flex-direction: column; align-items: flex-start; }
+            .header-right { text-align: left; }
+            .form-row { grid-template-columns: 1fr; }
+            .vehicle-card { grid-template-columns: 1fr; }
+            .vehicle-card-right { border-left: none; padding-left: 0; border-top: 1px dashed #e5e7eb; padding-top: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-shell">
+        <div class="app-brand">
+            <div class="app-logo">W</div>
+            <div>
+                <div class="app-title">Wartungsprotokoll</div>
+                <div class="app-subtitle">Internes Werkstatt-Tool</div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="header">
+                <div class="header-left">
+                    <h1>Fahrzeug-Wartungsprotokoll</h1>
+                    <p>Strukturiertes Protokoll für alle durchgeführten Arbeiten und Teile.</p>
+                </div>
+                <div class="header-right">
+                    <div>Dokument wird lokal erstellt</div>
+                    <div>Keine Cloud-Speicherung</div>
+                </div>
+            </div>
+
+            <div class="progress-bar">
+                <div class="progress-step active" id="progress-1">
+                    <span>Schritt 1</span><strong>Fahrzeugdaten</strong>
+                </div>
+                <div class="progress-step" id="progress-2">
+                    <span>Schritt 2</span><strong>Positionen</strong>
+                </div>
+                <div class="progress-step" id="progress-3">
+                    <span>Schritt 3</span><strong>PDF erzeugen</strong>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- Block 1: Fahrzeug -->
+                <div class="block active" id="block-1">
+                    <h2>Fahrzeugdaten</h2>
+                    <p class="block-subtitle">Grunddaten des Fahrzeugs und des Halters.</p>
+
+                    <div class="info-box">
+                        <div class="info-dot"></div>
+                        <div>Alle mit <span class="required">*</span> markierten Felder sind Pflichtfelder.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            <span>Halter / Fahrer<span class="required">*</span></span>
+                            <span class="form-label-extra">z.B. Max Mustermann</span>
+                        </label>
+                        <input type="text" id="fahrername" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>
+                                <span>Fahrzeugmodell<span class="required">*</span></span>
+                                <span class="form-label-extra">z.B. Opel Corsa D 1.2</span>
+                            </label>
+                            <input type="text" id="fahrzeugmodell" required>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <span>Kennzeichen<span class="required">*</span></span>
+                                <span class="form-label-extra">z.B. HD DL 898</span>
+                            </label>
+                            <input type="text" id="kennzeichen" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>
+                                <span>Fahrgestellnummer</span>
+                                <span class="form-label-extra">optional</span>
+                            </label>
+                            <input type="text" id="fahrgestellnr">
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <span>KM-Stand<span class="required">*</span></span>
+                                <span class="form-label-extra">z.B. 123456</span>
+                            </label>
+                            <input type="number" id="kmstand" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>
+                                <span>Wartungsdatum<span class="required">*</span></span>
+                            </label>
+                            <input type="date" id="wartungsdatum" required>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <span>Zusätzliche Hinweise</span>
+                                <span class="form-label-extra">optional</span>
+                            </label>
+                            <input type="text" id="zusatzinfo" placeholder="z.B. Kratzer hinten rechts">
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-next" type="button" onclick="nextBlock(1)">Weiter</button>
+                    </div>
+                </div>
+
+                <!-- Block 2: Positionen -->
+                <div class="block" id="block-2">
+                    <h2>Positionen (Arbeiten / Teile)</h2>
+                    <p class="block-subtitle">Jede Arbeit bzw. jedes Ersatzteil als eigene Position erfassen.</p>
+
+                    <div class="vehicle-card" id="vehicle-summary">
+                        <div class="vehicle-card-left">
+                            <h3 id="vehicle-title">Fahrzeug</h3>
+                            <p id="vehicle-details"></p>
+                        </div>
+                        <div class="vehicle-card-right">
+                            <table>
+                                <tr><td>Fahrzeug:</td><td id="vfz-modell"></td></tr>
+                                <tr><td>Kennzeichen:</td><td id="vfz-kennz"></td></tr>
+                                <tr><td>Fahrgestell-Nr.:</td><td id="vfz-fgst"></td></tr>
+                                <tr><td>KM-Stand:</td><td id="vfz-km"></td></tr>
+                                <tr><td>Wartungsdatum:</td><td id="vfz-datum"></td></tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-dot"></div>
+                        <div>Brutto-Preis eingeben, das Tool berechnet automatisch Netto, MwSt-Betrag und Gesamtsummen.</div>
+                    </div>
+
+                    <div id="positionen-container"></div>
+                    <button class="btn-add" type="button" onclick="addPosition()">+ Position hinzufügen</button>
+
+                    <div class="summary" id="summary" style="display:none;">
+                        <h3>Gesamtaufwand</h3>
+                        <div class="summary-row">
+                            <span>Zwischensumme netto:</span>
+                            <span id="summe-netto">0,00 €</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>MwSt gesamt:</span>
+                            <span id="summe-mwst">0,00 €</span>
+                        </div>
+                        <div class="summary-row-divider"></div>
+                        <div class="summary-row total">
+                            <span>Gesamtbetrag (brutto):</span>
+                            <span id="summe-brutto">0,00 €</span>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-back" type="button" onclick="prevBlock(2)">Zurück</button>
+                        <button class="btn-next" type="button" onclick="nextBlock(2)">Weiter</button>
+                    </div>
+                </div>
+
+                <!-- Block 3: PDF -->
+                <div class="block" id="block-3">
+                    <h2>PDF-Erstellung</h2>
+                    <p class="block-subtitle">Das Wartungsprotokoll wird als hochwertiges A4-PDF generiert.</p>
+
+                    <div class="info-box">
+                        <div class="info-dot"></div>
+                        <div>Das PDF wird ausschließlich im Browser erzeugt. Es werden keine Daten an Server übertragen.</div>
+                    </div>
+
+                    <div class="button-group">
+                        <button class="btn-back" type="button" onclick="prevBlock(3)">Zurück</button>
+                        <button class="btn-generate" type="button" onclick="generatePDF()">PDF erstellen &amp; herunterladen</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let currentBlock = 1;
+        let positionCounter = 0;
+
+        function nextBlock(blockNum) {
+            if (!validateBlock(blockNum)) return;
+            document.getElementById(`block-${blockNum}`).classList.remove('active');
+            document.getElementById(`progress-${blockNum}`).classList.remove('active');
+            document.getElementById(`progress-${blockNum}`).classList.add('completed');
+
+            currentBlock = blockNum + 1;
+            document.getElementById(`block-${currentBlock}`).classList.add('active');
+            document.getElementById(`progress-${currentBlock}`).classList.add('active');
+
+            if (currentBlock === 2) updateVehicleSummary();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function prevBlock(blockNum) {
+            document.getElementById(`block-${blockNum}`).classList.remove('active');
+            document.getElementById(`progress-${blockNum}`).classList.remove('active');
+
+            currentBlock = blockNum - 1;
+            document.getElementById(`block-${currentBlock}`).classList.add('active');
+            document.getElementById(`progress-${currentBlock}`).classList.add('active');
+            document.getElementById(`progress-${currentBlock}`).classList.remove('completed');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function validateBlock(blockNum) {
+            const block = document.getElementById(`block-${blockNum}`);
+            const inputs = block.querySelectorAll('input[required]');
+            let valid = true;
+
+            inputs.forEach(input => {
+                if (!input.value.trim()) {
+                    input.style.borderColor = '#b91c1c';
+                    valid = false;
+                } else {
+                    input.style.borderColor = '#cbd5e1';
+                }
+            });
+
+            if (!valid) alert('Bitte alle Pflichtfelder ausfüllen.');
+            return valid;
+        }
+
+        function updateVehicleSummary() {
+            const modell = document.getElementById('fahrzeugmodell').value;
+            const kennz = document.getElementById('kennzeichen').value;
+            const fgst = document.getElementById('fahrgestellnr').value;
+            const km = document.getElementById('kmstand').value;
+            const datum = document.getElementById('wartungsdatum').value;
+
+            document.getElementById('vehicle-title').textContent = modell || 'Fahrzeug';
+            document.getElementById('vehicle-details').textContent =
+                `${kennz ? kennz + ' · ' : ''}${km ? 'KM-Stand: ' + parseInt(km).toLocaleString('de-DE') + ' km' : ''}`;
+
+            document.getElementById('vfz-modell').textContent = modell;
+            document.getElementById('vfz-kennz').textContent = kennz;
+            document.getElementById('vfz-fgst').textContent = fgst;
+            document.getElementById('vfz-km').textContent = km ? parseInt(km).toLocaleString('de-DE') + ' km' : '';
+            document.getElementById('vfz-datum').textContent = formatDateDE(datum);
+        }
+
+        function formatDateDE(dateString) {
+            if (!dateString) return '';
+            const d = new Date(dateString);
+            if (isNaN(d)) return dateString;
+            return d.toLocaleDateString('de-DE');
+        }
+
+        function addPosition() {
+            positionCounter++;
+            const container = document.getElementById('positionen-container');
+
+            const div = document.createElement('div');
+            div.className = 'position-item';
+            div.id = `position-${positionCounter}`;
+
+            div.innerHTML = `
+                <div class="position-header">
+                    <h4>Position ${positionCounter}</h4>
+                    <button class="btn-remove" type="button" onclick="removePosition(${positionCounter})">Entfernen</button>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>
+                            <span>Bezeichnung<span class="required">*</span></span>
+                            <span class="form-label-extra">z.B. Ölwechsel</span>
+                        </label>
+                        <input type="text" id="pos-name-${positionCounter}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <span>Bemerkung</span>
+                            <span class="form-label-extra">optional, z.B. 5W30</span>
+                        </label>
+                        <input type="text" id="pos-hinweis-${positionCounter}">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>
+                            <span>Menge<span class="required">*</span></span>
+                            <span class="form-label-extra">z.B. 1</span>
+                        </label>
+                        <input type="number" id="pos-menge-${positionCounter}" min="0" step="1" value="1" onchange="recalculateTotals()">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <span>Einzelpreis brutto (€)<span class="required">*</span></span>
+                            <span class="form-label-extra">Bruttopreis inkl. MwSt</span>
+                        </label>
+                        <input type="number" id="pos-preis-brutto-${positionCounter}" min="0" step="0.01" value="0.00" onchange="recalculateTotals()">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>
+                            <span>MwSt-Satz (%)<span class="required">*</span></span>
+                            <span class="form-label-extra">Standard: 19</span>
+                        </label>
+                        <input type="number" id="pos-mwst-${positionCounter}" min="0" step="1" value="19" onchange="recalculateTotals()">
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <span>Einzelpreis netto (€)</span>
+                            <span class="form-label-extra">wird automatisch berechnet</span>
+                        </label>
+                        <input type="text" id="pos-preis-netto-${positionCounter}" readonly>
+                    </div>
+                </div>
+                <div class="position-totals">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Gesamt brutto (€)</label>
+                            <input type="text" id="pos-brutto-${positionCounter}" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Gesamt netto (€)</label>
+                            <input type="text" id="pos-netto-${positionCounter}" readonly>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>MwSt-Betrag gesamt (€)</label>
+                        <input type="text" id="pos-mwstbetrag-${positionCounter}" readonly>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+            recalculateTotals();
+        }
+
+        function removePosition(id) {
+            const el = document.getElementById(`position-${id}`);
+            if (el) el.remove();
+            recalculateTotals();
+        }
+
+        function recalculateTotals() {
+            let sumNetto = 0;
+            let sumMwst = 0;
+            let sumBrutto = 0;
+
+            document.querySelectorAll('.position-item').forEach(item => {
+                const id = item.id.split('-')[1];
+
+                const menge = parseFloat(document.getElementById(`pos-menge-${id}`)?.value || 0);
+                const preisBrutto = parseFloat(document.getElementById(`pos-preis-brutto-${id}`)?.value || 0);
+                const mwstSatz = parseFloat(document.getElementById(`pos-mwst-${id}`)?.value || 0);
+
+                const gesBrutto = menge * preisBrutto;
+                const gesNetto = gesBrutto / (1 + mwstSatz / 100);
+                const gesMwst = gesBrutto - gesNetto;
+                const preisNetto = preisBrutto / (1 + mwstSatz / 100);
+
+                sumNetto += gesNetto;
+                sumMwst += gesMwst;
+                sumBrutto += gesBrutto;
+
+                document.getElementById(`pos-preis-netto-${id}`).value = preisNetto.toFixed(2) + ' €';
+                document.getElementById(`pos-brutto-${id}`).value = gesBrutto.toFixed(2) + ' €';
+                document.getElementById(`pos-netto-${id}`).value = gesNetto.toFixed(2) + ' €';
+                document.getElementById(`pos-mwstbetrag-${id}`).value = gesMwst.toFixed(2) + ' €';
+            });
+
+            if (sumNetto > 0 || sumMwst > 0) {
+                document.getElementById('summary').style.display = 'block';
+                document.getElementById('summe-netto').textContent = sumNetto.toFixed(2) + ' €';
+                document.getElementById('summe-mwst').textContent = sumMwst.toFixed(2) + ' €';
+                document.getElementById('summe-brutto').textContent = sumBrutto.toFixed(2) + ' €';
+            } else {
+                document.getElementById('summary').style.display = 'none';
+            }
+        }
+
+        function generatePDF() {
+            const element = document.createElement('div');
+            element.style.padding = '24px 26px';
+            element.style.fontFamily = 'Inter, Arial, sans-serif';
+            element.style.fontSize = '10pt';
+            element.style.color = '#111827';
+            element.style.backgroundColor = '#ffffff';
+
+            const wartungsInput = document.getElementById('wartungsdatum').value;
+            const wartungsDatumDE = formatDateDE(wartungsInput);
+            const kmText = parseInt(document.getElementById('kmstand').value || '0').toLocaleString('de-DE');
+            const erstelltAm = new Date();
+
+            const docId = 'WP-' + erstelltAm.getFullYear().toString().slice(-2)
+                         + (erstelltAm.getMonth() + 1).toString().padStart(2, '0')
+                         + '-' + Math.floor(Math.random() * 900 + 100);
+
+            const positionenHTML = Array.from(document.querySelectorAll('.position-item')).map(item => {
+                const id = item.id.split('-')[1];
+                const name = document.getElementById(`pos-name-${id}`).value;
+                const hinweis = document.getElementById(`pos-hinweis-${id}`).value;
+                const menge = document.getElementById(`pos-menge-${id}`).value || '0';
+                const preis = parseFloat(document.getElementById(`pos-preis-brutto-${id}`).value || 0).toFixed(2);
+                const mwstSatz = document.getElementById(`pos-mwst-${id}`).value || '0';
+                const netto = document.getElementById(`pos-netto-${id}`).value || '0,00 €';
+                const mwstB = document.getElementById(`pos-mwstbetrag-${id}`).value || '0,00 €';
+                const brutto = document.getElementById(`pos-brutto-${id}`).value || '0,00 €';
+
+                return `
+    <tr style="border:1px solid #9ca3af;border-top:none;page-break-inside:avoid;">
+        <td style="
+  padding:6px 8px;
+  border-right:1px solid #e5e7eb;
+  vertical-align:top;
+
+  white-space:normal;
+  overflow-wrap:normal;
+  word-break:normal;
+">
+            <strong>${name}</strong><br>
+            <span style="
+                font-size:9pt;
+                color:#4b5563;
+                white-space:normal;
+                overflow-wrap:anywhere;
+                word-break:break-word;
+            ">${hinweis}</span>
+        </td>
+
+        <td style="padding:6px 8px;border-right:1px solid #e5e7eb;text-align:center;width:40px;vertical-align:middle;">${menge}</td>
+        <td style="padding:6px 8px;border-right:1px solid #e5e7eb;text-align:right;width:70px;vertical-align:middle;">${preis} €</td>
+        <td style="padding:6px 8px;border-right:1px solid #e5e7eb;text-align:center;width:45px;vertical-align:middle;">${mwstSatz} %</td>
+        <td style="padding:6px 8px;border-right:1px solid #e5e7eb;text-align:right;width:80px;vertical-align:middle;">${netto}</td>
+        <td style="padding:6px 8px;border-right:1px solid #e5e7eb;text-align:right;width:80px;vertical-align:middle;">${mwstB}</td>
+        <td style="padding:6px 8px;text-align:right;width:80px;vertical-align:middle;">${brutto}</td>
+    </tr>
+`;
+            }).join('');
+
+            const sumNetto = document.getElementById('summe-netto').textContent || '0,00 €';
+            const sumMwst = document.getElementById('summe-mwst').textContent || '0,00 €';
+            const sumBrutto = document.getElementById('summe-brutto').textContent || '0,00 €';
+
+            element.innerHTML = `
+                <div style="border-bottom:1px solid #9ca3af;padding-bottom:10px;margin-bottom:24px;">
+                    <table style="width:100%;border-collapse:collapse;">
+    <tr>
+        <td style="width:30%;"></td>
+
+        <td style="width:40%;text-align:center;font-size:15pt;font-weight:700;color:#111827;letter-spacing:0.02em;">
+            Wartungsprotokoll
+        </td>
+
+        <td style="width:30%;text-align:right;font-size:9pt;color:#6b7280;">
+            Dokument-ID: ${docId}<br>
+            Datum: ${erstelltAm.toLocaleDateString('de-DE')}
+        </td>
+    </tr>
+</table>
+                </div>
+
+                <table style="width:100%;border-collapse:collapse;margin-bottom:26px;font-size:10pt;">
+                    <tr>
+                        <td style="vertical-align:top;padding-right:12px;">
+                            <div style="font-weight:600;margin-bottom:4px;">Fahrzeug</div>
+                            <div><strong>Halter:</strong> ${document.getElementById('fahrername').value}</div>
+                            <div><strong>Modell:</strong> ${document.getElementById('fahrzeugmodell').value}</div>
+                            <div><strong>Kennzeichen:</strong> ${document.getElementById('kennzeichen').value}</div>
+                        </td>
+                        <td style="vertical-align:top;padding-left:12px;border-left:1px solid #e5e7eb;">
+                            <table style="width:100%;font-size:9pt;">
+                                <tr><td style="width:45%;">Fahrgestell-Nr.:</td><td>${document.getElementById('fahrgestellnr').value}</td></tr>
+                                <tr><td>KM-Stand:</td><td>${kmText} km</td></tr>
+                                <tr><td>Wartungsdatum:</td><td>${wartungsDatumDE}</td></tr>
+                                ${document.getElementById('zusatzinfo').value
+                                    ? `<tr><td>Hinweis:</td><td>${document.getElementById('zusatzinfo').value}</td></tr>` : ''}
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="margin-bottom:8px;font-weight:600;">Durchgeführte Arbeiten / Ersatzteile</div>
+                <table style="width:100%;border-collapse:collapse;font-size:9.5pt;margin-bottom:28px;">
+                    <thead>
+  <tr style="border:1px solid #9ca3af;background:#f9fafb;page-break-inside:avoid;">
+    <th style="padding:6px 8px;text-align:left;border-right:1px solid #e5e7eb;vertical-align:middle;">Bezeichnung</th>
+    <th style="padding:6px 8px;text-align:center;border-right:1px solid #e5e7eb;width:40px;vertical-align:middle;">Menge</th>
+    <th style="padding:6px 8px;text-align:right;border-right:1px solid #e5e7eb;width:70px;vertical-align:middle;">Einzelpreis<br>brutto</th>
+    <th style="padding:6px 8px;text-align:center;border-right:1px solid #e5e7eb;width:45px;vertical-align:middle;">MwSt</th>
+    <th style="padding:6px 8px;text-align:right;border-right:1px solid #e5e7eb;width:80px;vertical-align:middle;">Gesamt<br>netto</th>
+    <th style="padding:6px 8px;text-align:right;border-right:1px solid #e5e7eb;width:80px;vertical-align:middle;">MwSt‑Betrag</th>
+    <th style="padding:6px 8px;text-align:right;width:80px;vertical-align:middle;">Gesamt<br>brutto</th>
+  </tr>
+</thead>
+                    </thead>
+                    <tbody>
+                        ${positionenHTML || `<tr><td colspan="7" style="padding:6px 8px;border:1px solid #9ca3af;font-size:9.5pt;">Keine Positionen erfasst.</td></tr>`}
+                    </tbody>
+                </table>
+
+                <table style="width:100%;font-size:10pt;margin-bottom:32px;">
+                    <tr>
+                        <td style="width:60%;"></td>
+                        <td style="width:40%;">
+                            <table style="width:100%;border-collapse:collapse;">
+                                <tr>
+                                    <td style="padding:2px 0;text-align:right;">Zwischensumme netto:</td>
+                                    <td style="padding:2px 0;text-align:right;width:90px;">${sumNetto}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:2px 0;text-align:right;">MwSt gesamt:</td>
+                                    <td style="padding:2px 0;text-align:right;width:90px;">${sumMwst}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding:6px 0;border-top:1px solid #6b7280;font-weight:700;text-align:right;">Gesamtbetrag (brutto):</td>
+                                    <td style="padding:6px 0;border-top:1px solid #6b7280;font-weight:700;text-align:right;width:90px;">${sumBrutto}</td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                </table>
+
+                <div style="margin-top:28px;font-size:10pt;">
+                    <div style="margin-bottom:28px;">
+                        <strong>Bemerkung:</strong>
+                        <div style="min-height:60px;border:1px solid #d1d5db;margin-top:6px;"></div>
+                    </div>
+
+                    <table style="width:100%;margin-top:40px;font-size:10pt;">
+                        <tr>
+                            <td style="width:50%;">
+                                <div>Ort / Datum:</div>
+                                <div style="margin-top:28px;border-top:1px solid #d1d5db;width:80%;"></div>
+                            </td>
+                            <td style="width:50%;text-align:right;">
+                                <div>Unterschrift:</div>
+                                <div style="margin-top:28px;border-top:1px solid #d1d5db;width:80%;float:right;"></div>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div style="font-size:8pt;color:#6b7280;text-align:right;margin-top:12px;">
+    Fahrzeug-Wartungsprotokoll · ID: ${docId} · erstellt am ${erstelltAm.toLocaleDateString('de-DE')}
+</div>
+            `;
+
+            const opt = {
+                margin: [10, 10, 10, 10], // oben, rechts, unten, links (mm)
+                filename: `Wartung_${document.getElementById('kennzeichen').value || 'Fahrzeug'}_${kmText.replace(/\./g, '')}km.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        window.onload = function () {
+            const heute = new Date();
+            document.getElementById('wartungsdatum').valueAsDate = heute;
+            addPosition();
+        };
+    </script>
+</body>
+</html>
